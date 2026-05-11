@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  <title>Monitoring Alarm Alat Medis</title>
+
+  <!-- FIREBASE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <!-- EXCEL -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <style>
+
+    body{
+      font-family: Arial;
+      text-align:center;
+      background:#f0f0f0;
+      margin:20px;
+    }
+
+    input, select{
+      padding:10px;
+      margin:5px;
+      width:220px;
+    }
+
+    button{
+      padding:10px 20px;
+      margin:5px;
+      background:#007bff;
+      color:white;
+      border:none;
+      cursor:pointer;
+      border-radius:5px;
+    }
+
+    button:hover{
+      opacity:0.9;
+    }
+
+    table{
+      border-collapse: collapse;
+      width:95%;
+      margin:auto;
+      background:white;
+      margin-bottom:30px;
+    }
+
+    th, td{
+      border:1px solid black;
+      padding:10px;
+      text-align:center;
+    }
+
+    th{
+      background:#007bff;
+      color:white;
+    }
+
+    .hidden{
+      display:none;
+    }
+
+    .status-occlusion{
+      background:red;
+      color:white;
+      animation:blink 1s infinite;
+    }
+
+    .status-near{
+      background:yellow;
+      color:black;
+    }
+
+    .status-normal{
+      background:#66cc66;
+      color:white;
+    }
+
+    @keyframes blink{
+      50%{
+        opacity:0.4;
+      }
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<h1>💉 Monitoring Alarm Alat Medis</h1>
+
+<!-- AUDIO ALARM -->
+<audio id="alarmSound">
+  <source src="alarm.mp3" type="audio/mpeg">
+</audio>
+
+<!-- LOGIN -->
+<div id="loginPage">
+
+  <input id="email" placeholder="Email"><br>
+
+  <input
+    id="password"
+    type="password"
+    placeholder="Password"
+  ><br>
+
+  <button onclick="login()">
+    Login
+  </button>
+
+</div>
+
+<!-- MENU -->
+<div id="menuPage" class="hidden">
+
+  <button onclick="logout()">
+    Logout
+  </button>
+
+  <br><br>
+
+  <button onclick="showMonitoring()">
+    Monitoring
+  </button>
+
+  <button onclick="showData()">
+    Data Monitoring
+  </button>
+
+  <br><br>
+
+  <button onclick="aktifkanSuara()">
+    Aktifkan Suara Alarm
+  </button>
+
+  <button onclick="tesNotif()">
+    Tes Notifikasi
+  </button>
+
+</div>
+
+<!-- MONITORING -->
+<div id="monitoringPage" class="hidden">
+
+  <h3>Pilih Ruangan Aktif</h3>
+
+  <select onchange="setBed(this.value)">
+
+    <!-- BANGSAL -->
+    <option>BED1</option>
+    <option>BED2</option>
+    <option>BED3</option>
+    <option>BED4</option>
+
+    <!-- ICU -->
+    <option>ICU1</option>
+    <option>ICU2</option>
+    <option>ICU3</option>
+    <option>ICU4</option>
+
+  </select>
+
+  <h3>Input Data Alat</h3>
+
+  <select id="bed">
+
+    <!-- BANGSAL -->
+    <option>BED1</option>
+    <option>BED2</option>
+    <option>BED3</option>
+    <option>BED4</option>
+
+    <!-- ICU -->
+    <option>ICU1</option>
+    <option>ICU2</option>
+    <option>ICU3</option>
+    <option>ICU4</option>
+
+  </select><br>
+
+  <input id="nama" placeholder="Nama"><br>
+
+  <input id="merek" placeholder="Merek"><br>
+
+  <input id="seri" placeholder="Seri"><br>
+
+  <button onclick="simpan()">
+    Simpan
+  </button>
+
+  <br><br>
+
+  <!-- TABEL BANGSAL -->
+  <h2>Monitoring Bangsal</h2>
+
+  <table>
+
+    <thead>
+      <tr>
+        <th>Bangsal</th>
+        <th>Nama</th>
+        <th>Merek</th>
+        <th>Seri</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+
+    <tbody id="tabelBangsal"></tbody>
+
+  </table>
+
+  <!-- TABEL ICU -->
+  <h2>Monitoring ICU</h2>
+
+  <table>
+
+    <thead>
+      <tr>
+        <th>ICU</th>
+        <th>Nama</th>
+        <th>Merek</th>
+        <th>Seri</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+
+    <tbody id="tabelICU"></tbody>
+
+  </table>
+
+</div>
+
+<!-- DATA -->
+<div id="dataPage" class="hidden">
+
+  <h2 id="judulTanggal">
+    Data Alarm
+  </h2>
+
+  <input type="date" id="filterTanggal">
+
+  <button onclick="filterData()">
+    Filter
+  </button>
+
+  <button onclick="resetFilter()">
+    Hari Ini
+  </button>
+
+  <button onclick="exportExcel()">
+    Export Excel
+  </button>
+
+  <button onclick="hapusData()">
+    Hapus Semua Data
+  </button>
+
+  <br><br>
+
+  <table>
+
+    <thead>
+      <tr>
+        <th>No</th>
+        <th>Waktu</th>
+        <th>Ruangan</th>
+        <th>Nama</th>
+        <th>Merek</th>
+        <th>Seri</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+
+    <tbody id="tabelData"></tbody>
+
+  </table>
+
+</div>
+
+<script>
+
+// ===== FIREBASE =====
+
+const firebaseConfig = {
+
+  apiKey:
+  "AIzaSyDFaZJb6M3fDc17hy_nIlJ0Z1eyf2mp0H8",
+
+  authDomain:
+  "alarm-syringe-pump-terumo.firebaseapp.com",
+
+  databaseURL:
+  "https://alarm-syringe-pump-terumo-default-rtdb.firebaseio.com/",
+
+  projectId:
+  "alarm-syringe-pump-terumo",
+
+  storageBucket:
+  "alarm-syringe-pump-terumo.firebasestorage.app",
+
+  messagingSenderId:
+  "725648405165",
+
+  appId:
+  "1:725648405165:web:59c863485a3ade5388cc24",
+
+  measurementId:
+  "G-N23J1ZCWFN"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+
+const db = firebase.database();
+
+// ===== VARIABLE =====
+
+let allData = {};
+
+let lastLogTime = {};
+
+// ===== JEDA NOTIFIKASI =====
+
+const DEBOUNCE_TIME = 1000;
+
+// ===== IZIN NOTIFIKASI =====
+
+Notification.requestPermission();
+
+// ===== LOGIN =====
+
+function login(){
+
+  auth.signInWithEmailAndPassword(
+
+    email.value,
+
+    password.value
+
+  )
+
+  .then(()=>{
+
+    loginPage.classList.add("hidden");
+
+    menuPage.classList.remove("hidden");
+
+    loadMonitoring();
+
+    loadData();
+
+  })
+
+  .catch(e=>alert(e.message));
+}
+
+// ===== LOGOUT =====
+
+function logout(){
+
+  auth.signOut();
+
+  location.reload();
+}
+
+// ===== AKTIFKAN SUARA =====
+
+function aktifkanSuara(){
+
+  document
+  .getElementById("alarmSound")
+  .play();
+
+  alert("Suara alarm aktif");
+}
+
+// ===== TEST NOTIFIKASI =====
+
+function tesNotif(){
+
+  if(Notification.permission === "granted"){
+
+    new Notification(
+
+      "TEST NOTIFIKASI",
+
+      {
+
+        body:
+        "Notifikasi berhasil muncul"
+
+      }
+
+    );
+
+  }else{
+
+    alert(
+      "Notifikasi belum diizinkan"
+    );
+  }
+}
+
+// ===== NAVIGASI =====
+
+function showMonitoring(){
+
+  hide();
+
+  monitoringPage.classList.remove("hidden");
+}
+
+function showData(){
+
+  hide();
+
+  dataPage.classList.remove("hidden");
+
+  loadData();
+}
+
+function hide(){
+
+  monitoringPage.classList.add("hidden");
+
+  dataPage.classList.add("hidden");
+}
+
+// ===== SET RUANGAN =====
+
+function setBed(b){
+
+  db.ref("device/bed").set(b);
+}
+
+// ===== SIMPAN DATA =====
+
+function simpan(){
+
+  if(
+    !nama.value ||
+    !merek.value ||
+    !seri.value
+  ){
+
+    alert(
+      "Mohon lengkapi semua data!"
+    );
+
+    return;
+  }
+
+  db.ref("monitoring/" + bed.value).set({
+
+    nama: nama.value,
+
+    merek: merek.value,
+
+    seri: seri.value,
+
+    status: "NORMAL"
+
+  });
+
+  alert(
+    "Data alat berhasil disimpan"
+  );
+
+  nama.value = "";
+
+  merek.value = "";
+
+  seri.value = "";
+}
+
+// ===== WARNA STATUS =====
+
+function getStatusClass(s){
+
+  if(s==="OCCLUSION")
+    return "status-occlusion";
+
+  if(s==="NEAR_EMPTY")
+    return "status-near";
+
+  if(s==="NORMAL")
+    return "status-normal";
+
+  return "";
+}
+
+// ===== FORMAT WAKTU =====
+
+function formatWaktu(w){
+
+  let date = new Date(w * 1000);
+
+  return date.toLocaleString(
+
+    "id-ID",
+
+    {
+
+      timeZone:"Asia/Jakarta",
+
+      day:"2-digit",
+
+      month:"2-digit",
+
+      year:"numeric",
+
+      hour:"2-digit",
+
+      minute:"2-digit",
+
+      second:"2-digit"
+
+    }
+
+  );
+}
+
+// ===== HARI INI =====
+
+function getTodayDate(){
+
+  return new Date().toLocaleDateString(
+
+    "en-CA",
+
+    {
+
+      timeZone:"Asia/Jakarta"
+
+    }
+
+  );
+}
+
+// ===== VALIDASI LOG =====
+
+function shouldLogStatus(
+
+  bed,
+
+  newStatus,
+
+  currentTime
+
+){
+
+  if(
+
+    newStatus !== "OCCLUSION" &&
+
+    newStatus !== "NEAR_EMPTY"
+
+  )
+    return false;
+
+  let lastTime =
+    lastLogTime[bed] || 0;
+
+  let timeDiff =
+    currentTime - lastTime;
+
+  if(timeDiff < DEBOUNCE_TIME){
+
+    return false;
+  }
+
+  return true;
+}
+
+// ===== LOAD MONITORING =====
+
+function loadMonitoring(){
+
+  db.ref("monitoring").on(
+
+    "value",
+
+    (snap)=>{
+
+      let d = snap.val();
+
+      let htmlBangsal = "";
+
+      let htmlICU = "";
+
+      // ===== BANGSAL =====
+
+      [
+
+        "BED1",
+        "BED2",
+        "BED3",
+        "BED4"
+
+      ]
+
+      .forEach(b=>{
+
+        let x =
+
+          (d && d[b])
+
+          ? d[b]
+
+          : {};
+
+        htmlBangsal += `
+
+        <tr>
+
+          <td>${b}</td>
+
+          <td>${x.nama || "-"}</td>
+
+          <td>${x.merek || "-"}</td>
+
+          <td>${x.seri || "-"}</td>
+
+          <td class="${getStatusClass(x.status)}">
+
+            ${x.status || "-"}
+
+          </td>
+
+        </tr>
+
+        `;
+      });
+
+      // ===== ICU =====
+
+      [
+
+        "ICU1",
+        "ICU2",
+        "ICU3",
+        "ICU4"
+
+      ]
+
+      .forEach(b=>{
+
+        let x =
+
+          (d && d[b])
+
+          ? d[b]
+
+          : {};
+
+        htmlICU += `
+
+        <tr>
+
+          <td>${b}</td>
+
+          <td>${x.nama || "-"}</td>
+
+          <td>${x.merek || "-"}</td>
+
+          <td>${x.seri || "-"}</td>
+
+          <td class="${getStatusClass(x.status)}">
+
+            ${x.status || "-"}
+
+          </td>
+
+        </tr>
+
+        `;
+      });
+
+      tabelBangsal.innerHTML =
+        htmlBangsal;
+
+      tabelICU.innerHTML =
+        htmlICU;
+
+    }
+
+  );
+
+  // ===== DETEKSI STATUS =====
+
+  db.ref("monitoring").on(
+
+    "child_changed",
+
+    (snap)=>{
+
+      let dataBaru =
+        snap.val();
+
+      let bed =
+        snap.key;
+
+      let statusBaru =
+
+        dataBaru.status ||
+
+        "NORMAL";
+
+      let waktuSekarang =
+
+        Math.floor(
+          Date.now()/1000
+        );
+
+      if(
+
+        shouldLogStatus(
+
+          bed,
+
+          statusBaru,
+
+          waktuSekarang
+
+        )
+
+      ){
+
+        // ===== NOTIFIKASI =====
+
+        if(
+          Notification.permission
+          === "granted"
+        ){
+
+          new Notification(
+
+            "Alarm Alat Medis!",
+
+            {
+
+              body:
+
+                bed +
+
+                " : " +
+
+                statusBaru
+
+            }
+
+          );
+        }
+
+        // ===== SUARA =====
+
+        document
+        .getElementById(
+          "alarmSound"
+        )
+        .play();
+
+        // ===== SIMPAN HISTORY =====
+
+        db.ref("history").push({
+
+          waktu:
+            waktuSekarang,
+
+          bed: bed,
+
+          nama:
+            dataBaru.nama || "-",
+
+          merek:
+            dataBaru.merek || "-",
+
+          seri:
+            dataBaru.seri || "-",
+
+          status:
+            statusBaru
+
+        });
+
+        // ===== UPDATE LAST TIME =====
+
+        lastLogTime[bed] =
+          waktuSekarang;
+      }
+
+    }
+
+  );
+}
+
+// ===== LOAD DATA =====
+
+function loadData(){
+
+  db.ref("history").on(
+
+    "value",
+
+    (snap)=>{
+
+      allData =
+        snap.val() || {};
+
+      let today =
+        getTodayDate();
+
+      filterTanggal.value =
+        today;
+
+      tampilJudul(today);
+
+      tampil(allData);
+
+    }
+
+  );
+}
+
+// ===== TAMPIL DATA =====
+
+function tampil(data){
+
+  let html = "";
+
+  let arr =
+
+    Object.keys(data)
+
+    .map(key=>data[key]);
+
+  arr.sort(
+
+    (a,b)=>
+
+    b.waktu - a.waktu
+
+  );
+
+  arr.forEach((d,index)=>{
+
+    html += `
+
+    <tr>
+
+      <td>${index+1}</td>
+
+      <td>
+
+        ${formatWaktu(d.waktu)}
+
+      </td>
+
+      <td>${d.bed}</td>
+
+      <td>${d.nama || "-"}</td>
+
+      <td>${d.merek || "-"}</td>
+
+      <td>${d.seri || "-"}</td>
+
+      <td class="${getStatusClass(d.status)}">
+
+        ${d.status}
+
+      </td>
+
+    </tr>
+
+    `;
+  });
+
+  tabelData.innerHTML =
+    html;
+}
+
+// ===== FILTER =====
+
+function filterData(){
+
+  let t =
+    filterTanggal.value;
+
+  let hasil = {};
+
+  for(let k in allData){
+
+    let d =
+      allData[k];
+
+    let tgl =
+
+      new Date(d.waktu*1000)
+
+      .toLocaleDateString(
+
+        "en-CA",
+
+        {
+
+          timeZone:
+          "Asia/Jakarta"
+
+        }
+
+      );
+
+    if(tgl === t){
+
+      hasil[k] = d;
+    }
+  }
+
+  tampil(hasil);
+
+  tampilJudul(t);
+}
+
+// ===== RESET =====
+
+function resetFilter(){
+
+  let today =
+    getTodayDate();
+
+  filterTanggal.value =
+    today;
+
+  tampil(allData);
+
+  tampilJudul(today);
+}
+
+// ===== HAPUS =====
+
+function hapusData(){
+
+  let konfirmasi = confirm(
+
+    "Yakin ingin menghapus semua data alarm?"
+
+  );
+
+  if(konfirmasi){
+
+    db.ref("history").remove()
+
+    .then(()=>{
+
+      tabelData.innerHTML =
+        "";
+
+      allData = {};
+
+      lastLogTime = {};
+
+      alert(
+
+        "Semua data berhasil dihapus"
+
+      );
+
+    })
+
+    .catch((error)=>{
+
+      alert(
+
+        "Error: " +
+        error.message
+
+      );
+
+    });
+  }
+}
+
+// ===== JUDUL =====
+
+function tampilJudul(t){
+
+  let teks =
+
+    new Date(t)
+
+    .toLocaleDateString(
+
+      "id-ID",
+
+      {
+
+        day:"numeric",
+
+        month:"long",
+
+        year:"numeric"
+
+      }
+
+    );
+
+  judulTanggal.innerText =
+
+    "Data Alarm: " +
+
+    teks;
+}
+
+// ===== EXPORT EXCEL =====
+
+function exportExcel(){
+
+  let arr = [];
+
+  for(let k in allData){
+
+    let d =
+      allData[k];
+
+    arr.push({
+
+      Waktu:
+        formatWaktu(d.waktu),
+
+      Ruangan:
+        d.bed,
+
+      Nama:
+        d.nama,
+
+      Merek:
+        d.merek,
+
+      Seri:
+        d.seri,
+
+      Status:
+        d.status
+
+    });
+  }
+
+  arr.sort((a,b)=>{
+
+    return (
+
+      new Date(b.Waktu)
+
+      -
+
+      new Date(a.Waktu)
+
+    );
+
+  });
+
+  let wb =
+    XLSX.utils.book_new();
+
+  let ws =
+
+    XLSX.utils.json_to_sheet(arr);
+
+  XLSX.utils.book_append_sheet(
+
+    wb,
+
+    ws,
+
+    "Data Alarm"
+
+  );
+
+  XLSX.writeFile(
+
+    wb,
+
+    "Alarm_" +
+
+    getTodayDate() +
+
+    ".xlsx"
+
+  );
+}
+
+</script>
+
+</body>
+</html>
