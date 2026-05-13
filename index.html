@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Medical Device Alarm Monitoring</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Arial,sans-serif;
+}
+
+body{
+  background:#edf2f7;
+}
+
+/* LOGIN */
+#loginPage{
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.login-box{
+  width:360px;
+  background:white;
+  padding:40px;
+  border-radius:25px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.1);
+  text-align:center;
+}
+
+.login-box h1{
+  margin-bottom:25px;
+  color:#1d4ed8;
+}
+
+.login-box input{
+  width:100%;
+  padding:14px;
+  margin:10px 0;
+  border-radius:12px;
+  border:1px solid #ccc;
+}
+
+.login-box button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:#2563eb;
+  color:white;
+  font-size:16px;
+  cursor:pointer;
+}
+
+/* DASHBOARD */
+#dashboard{
+  display:none;
+}
+
+/* SIDEBAR */
+.sidebar{
+  position:fixed;
+  left:0;
+  top:0;
+  width:260px;
+  height:100vh;
+  background:#0f172a;
+  padding:25px;
+  color:white;
+}
+
+.logo{
+  font-size:22px;
+  font-weight:bold;
+  margin-bottom:40px;
+}
+
+.menu button{
+  width:100%;
+  padding:15px;
+  margin-bottom:12px;
+  border:none;
+  border-radius:14px;
+  background:transparent;
+  color:white;
+  font-size:16px;
+  text-align:left;
+  cursor:pointer;
+}
+
+.menu button:hover{
+  background:#2563eb;
+}
+
+.menu i{
+  margin-right:10px;
+}
+
+/* CONTENT */
+.content{
+  margin-left:280px;
+  padding:25px;
+}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:25px;
+}
+
+.topbar h1{
+  font-size:30px;
+  color:#1e293b;
+}
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:20px;
+  margin-bottom:25px;
+}
+
+.card{
+  background:white;
+  padding:25px;
+  border-radius:20px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.08);
+}
+
+.card h2{
+  font-size:35px;
+  margin-bottom:10px;
+}
+
+.card p{
+  color:#555;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:2fr 1fr;
+  gap:20px;
+}
+
+.box{
+  background:white;
+  padding:20px;
+  border-radius:20px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.08);
+  margin-bottom:20px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+
+table th{
+  background:#2563eb;
+  color:white;
+  padding:12px;
+}
+
+table td{
+  padding:12px;
+  border-bottom:1px solid #ddd;
+  text-align:center;
+}
+
+/* STATUS */
+.status-normal{
+  background:#66cc66;
+  color:white;
+  font-weight:bold;
+  border-radius:8px;
+}
+
+.status-near{
+  background:yellow;
+  color:black;
+  font-weight:bold;
+  border-radius:8px;
+}
+
+.status-occlusion{
+  background:red;
+  color:white;
+  font-weight:bold;
+  border-radius:8px;
+  animation:blink 1s infinite;
+}
+
+@keyframes blink{
+  50%{
+    opacity:0.4;
+  }
+}
+
+.actionBtn{
+  padding:12px 18px;
+  border:none;
+  border-radius:12px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+  margin:5px;
+}
+
+.searchBox{
+  padding:12px;
+  width:300px;
+  border-radius:12px;
+  border:1px solid #ccc;
+  margin-top:10px;
+}
+
+.page{
+  display:none;
+}
+
+.active{
+  display:block;
+}
+
+.backBtn{
+  padding:12px 18px;
+  border:none;
+  border-radius:12px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+  margin-bottom:20px;
+}
+
+select,input{
+  padding:12px;
+  margin:6px;
+  border-radius:10px;
+  border:1px solid #ccc;
+}
+
+/* NOTIFIKASI ALARM */
+.notif-alarm{
+  display:none;
+  position:fixed;
+  top:20px;
+  right:20px;
+  background:#dc2626;
+  color:white;
+  padding:18px 22px;
+  border-radius:15px;
+  box-shadow:0 8px 25px rgba(0,0,0,0.3);
+  z-index:99999;
+  font-weight:bold;
+  animation:slideNotif 0.4s ease, blinkNotif 1s infinite;
+}
+
+.notif-alarm p{
+  margin-top:8px;
+  font-size:14px;
+  font-weight:normal;
+}
+
+@keyframes slideNotif{
+  from{
+    opacity:0;
+    transform:translateX(100px);
+  }
+  to{
+    opacity:1;
+    transform:translateX(0);
+  }
+}
+
+@keyframes blinkNotif{
+  50%{
+    opacity:0.75;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div id="notifAlarm" class="notif-alarm">
+  🚨 ALARM TERDETEKSI!
+  <p id="notifText"></p>
+</div>
+
+<audio id="suaraAlarm" src="alarm.mp3" preload="auto"></audio>
+
+<div id="loginPage">
+  <div class="login-box">
+    <h1>💉 Medical Alarm</h1>
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
+</div>
+
+<div id="dashboard">
+
+  <div class="sidebar" id="sidebar">
+    <div class="logo">💉 MEDICAL ALARM</div>
+
+    <div class="menu">
+      <button onclick="showDashboard()">
+        <i class="fa-solid fa-house"></i>Dashboard
+      </button>
+
+      <button onclick="showMonitoring()">
+        <i class="fa-solid fa-heart-pulse"></i>Monitoring Alarm
+      </button>
+
+      <button onclick="showData()">
+        <i class="fa-solid fa-clock-rotate-left"></i>Riwayat Alarm
+      </button>
+
+      <button onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket"></i>Logout
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div id="dashboardPage" class="page active">
+
+      <div class="topbar">
+        <h1>Medical Device Alarm Monitoring System</h1>
+        <h2 id="jam"></h2>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <h2 id="alarmCount">0</h2>
+          <p>Alarm Aktif</p>
+        </div>
+
+        <div class="card">
+          <h2 id="warningCount">0</h2>
+          <p>Warning</p>
+        </div>
+
+        <div class="card">
+          <h2 id="normalCount">0</h2>
+          <p>Normal</p>
+        </div>
+
+        <div class="card">
+          <h2 id="deviceCount">0</h2>
+          <p>Total Device</p>
+        </div>
+      </div>
+
+      <div class="grid">
+
+        <div>
+          <div class="box">
+            <h2>Monitoring Ruangan</h2>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Ruangan</th>
+                  <th>Nama</th>
+                  <th>Merek</th>
+                  <th>Seri</th>
+                  <th>Status</th>
+                  <th>Update</th>
+                </tr>
+              </thead>
+              <tbody id="monitoringTable"></tbody>
+            </table>
+          </div>
+
+          <div class="box">
+            <h2>Grafik Alarm</h2>
+            <canvas id="alarmChart"></canvas>
+          </div>
+        </div>
+
+        <div>
+          <div class="box">
+            <h2>Alarm Terbaru</h2>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Ruangan</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="alarmTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="monitoringPage" class="page">
+
+      <button class="backBtn" onclick="backMenu()">⬅ Kembali</button>
+
+      <div class="box">
+        <h2>Input Data Alat</h2>
+        <br>
+
+        <select id="bed">
+          <option>BED1</option>
+          <option>BED2</option>
+          <option>BED3</option>
+          <option>BED4</option>
+          <option>ICU1</option>
+          <option>ICU2</option>
+          <option>ICU3</option>
+          <option>ICU4</option>
+        </select>
+
+        <input id="nama" placeholder="Nama Alat">
+        <input id="merek" placeholder="Merek">
+        <input id="seri" placeholder="Seri">
+
+        <button class="actionBtn" onclick="simpan()">Simpan</button>
+      </div>
+
+    </div>
+
+    <div id="dataPage" class="page">
+
+      <button class="backBtn" onclick="backMenu()">⬅ Kembali</button>
+
+      <div class="box">
+        <h2 id="judulTanggal">📜 Data Monitoring</h2>
+        <br>
+
+        <input type="date" id="filterTanggal" onchange="filterData()">
+
+        <button class="actionBtn" onclick="resetFilter()">Hari Ini</button>
+        <button class="actionBtn" onclick="exportExcel()">Export Excel</button>
+        <button class="actionBtn" onclick="hapusData()">Hapus Semua Data</button>
+
+        <br><br>
+
+        <input
+          type="text"
+          id="searchInput"
+          class="searchBox"
+          placeholder="Cari waktu, ruangan, nama, merek, seri, status..."
+          onkeyup="searchData()"
+        >
+
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Waktu</th>
+              <th>Ruangan</th>
+              <th>Nama</th>
+              <th>Merek</th>
+              <th>Seri</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody id="dataTable"></tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey:"AIzaSyDFaZJb6M3fDc17hy_nIlJ0Z1eyf2mp0H8",
+  databaseURL:"https://alarm-syringe-pump-terumo-default-rtdb.firebaseio.com/"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.database();
+
+let allData = {};
+let monitoringData = {};
+let statusSebelumnya = {};
+let lastLogTime = {};
+
+const DEBOUNCE_TIME = 5;
+
+// LOGIN
+function login(){
+  auth.signInWithEmailAndPassword(email.value,password.value)
+  .then(()=>{
+    loginPage.style.display = "none";
+    dashboard.style.display = "block";
+
+    aktifkanSuaraAlarm();
+    loadDashboard();
+    loadHistory();
+  })
+  .catch(e=>alert(e.message));
+}
+
+function logout(){
+  auth.signOut();
+  location.reload();
+}
+
+// AKTIFKAN SUARA SETELAH LOGIN
+function aktifkanSuaraAlarm(){
+  const suara = document.getElementById("suaraAlarm");
+  suara.volume = 1;
+
+  suara.play()
+  .then(()=>{
+    suara.pause();
+    suara.currentTime = 0;
+  })
+  .catch(()=>{
+    console.log("Suara akan aktif setelah user klik halaman.");
+  });
+}
+
+// NOTIFIKASI ALARM
+function tampilNotifAlarm(data, bedKey){
+  const notif = document.getElementById("notifAlarm");
+  const notifText = document.getElementById("notifText");
+  const suara = document.getElementById("suaraAlarm");
+
+  notifText.innerHTML = `
+    Ruangan: ${bedKey}<br>
+    Nama: ${data.nama || "-"}<br>
+    Merek: ${data.merek || "-"}<br>
+    Seri: ${data.seri || "-"}<br>
+    Status: ${data.status || "-"}
+  `;
+
+  notif.style.display = "block";
+
+  suara.currentTime = 0;
+  suara.play().catch(()=>{
+    console.log("Klik halaman dulu agar suara alarm aktif");
+  });
+
+  setTimeout(()=>{
+    notif.style.display = "none";
+  },7000);
+}
+
+// NAVIGASI
+function hidePages(){
+  dashboardPage.classList.remove("active");
+  monitoringPage.classList.remove("active");
+  dataPage.classList.remove("active");
+}
+
+function showDashboard(){
+  hidePages();
+  sidebar.style.display = "block";
+  dashboardPage.classList.add("active");
+}
+
+function showMonitoring(){
+  hidePages();
+  sidebar.style.display = "none";
+  monitoringPage.classList.add("active");
+}
+
+function showData(){
+  hidePages();
+  sidebar.style.display = "none";
+  dataPage.classList.add("active");
+  loadHistory();
+}
+
+function backMenu(){
+  hidePages();
+  sidebar.style.display = "block";
+  dashboardPage.classList.add("active");
+}
+
+// JAM WIB
+setInterval(()=>{
+  let now = new Date();
+
+  jam.innerHTML = now.toLocaleString("id-ID",{
+    timeZone:"Asia/Jakarta",
+    day:"2-digit",
+    month:"2-digit",
+    year:"numeric",
+    hour:"2-digit",
+    minute:"2-digit",
+    second:"2-digit"
+  });
+},1000);
+
+// STATUS WARNA
+function getStatusClass(s){
+  if(s === "OCCLUSION") return "status-occlusion";
+  if(s === "NEAR_EMPTY") return "status-near";
+  if(s === "NORMAL") return "status-normal";
+  return "";
+}
+
+// FORMAT WAKTU RIWAYAT
+function formatWaktu(w){
+  let date = new Date(w * 1000);
+
+  return date.toLocaleString("id-ID",{
+    timeZone:"Asia/Jakarta",
+    day:"2-digit",
+    month:"2-digit",
+    year:"numeric",
+    hour:"2-digit",
+    minute:"2-digit",
+    second:"2-digit"
+  });
+}
+
+// TANGGAL HARI INI WIB
+function getTodayDate(){
+  return new Date().toLocaleDateString("en-CA",{
+    timeZone:"Asia/Jakarta"
+  });
+}
+
+// CEGAH RIWAYAT DOUBLE
+function shouldLogStatus(bed,newStatus,oldStatus,currentTime){
+  if(newStatus === oldStatus) return false;
+
+  if(newStatus !== "OCCLUSION" && newStatus !== "NEAR_EMPTY") return false;
+
+  let lastTime = lastLogTime[bed] || 0;
+  let timeDiff = currentTime - lastTime;
+
+  if(timeDiff < DEBOUNCE_TIME){
+    return false;
+  }
+
+  return true;
+}
+
+// LOAD DASHBOARD DAN MONITORING
+function loadDashboard(){
+  db.ref("monitoring").on("value",(snap)=>{
+    let data = snap.val() || {};
+    monitoringData = data;
+
+    let html = "";
+
+    let alarm = 0;
+    let warning = 0;
+    let normal = 0;
+    let total = 0;
+
+    Object.keys(data).forEach(key=>{
+      let d = data[key] || {};
+
+      total++;
+
+      if(d.status === "OCCLUSION") alarm++;
+      else if(d.status === "NEAR_EMPTY") warning++;
+      else normal++;
+
+      html += `
+        <tr>
+          <td>${key}</td>
+          <td>${d.nama || "-"}</td>
+          <td>${d.merek || "-"}</td>
+          <td>${d.seri || "-"}</td>
+          <td class="${getStatusClass(d.status)}">${d.status || "-"}</td>
+          <td>${d.waktu ? formatWaktu(d.waktu) : "-"}</td>
+        </tr>
+      `;
+    });
+
+    monitoringTable.innerHTML = html;
+
+    alarmCount.innerHTML = alarm;
+    warningCount.innerHTML = warning;
+    normalCount.innerHTML = normal;
+    deviceCount.innerHTML = total;
+  });
+
+  // AMBIL STATUS AWAL
+  db.ref("monitoring").once("value",(snap)=>{
+    let data = snap.val() || {};
+
+    Object.keys(data).forEach(bed=>{
+      statusSebelumnya[bed] = data[bed].status || "NORMAL";
+    });
+  });
+
+  // DETEKSI PERUBAHAN STATUS DAN SIMPAN RIWAYAT 1 KALI
+  db.ref("monitoring").on("child_changed",(snap)=>{
+    let dataBaru = snap.val();
+    let bedKey = snap.key;
+
+    let statusBaru = dataBaru.status || "NORMAL";
+    let statusLama = statusSebelumnya[bedKey] || "NORMAL";
+    let waktuSekarang = Math.floor(Date.now() / 1000);
+
+    if(shouldLogStatus(bedKey,statusBaru,statusLama,waktuSekarang)){
+      tampilNotifAlarm(dataBaru, bedKey);
+
+      let logId = `${bedKey}_${statusBaru}_${waktuSekarang}`;
+
+      db.ref("history").push({
+        waktu:waktuSekarang,
+        bed:bedKey,
+        nama:dataBaru.nama || "-",
+        merek:dataBaru.merek || "-",
+        seri:dataBaru.seri || "-",
+        status:statusBaru,
+        timestamp:waktuSekarang,
+        logId:logId
+      });
+
+      lastLogTime[bedKey] = waktuSekarang;
+    }
+
+    statusSebelumnya[bedKey] = statusBaru;
+  });
+}
+
+// LOAD HISTORY
+function loadHistory(){
+  db.ref("history").on("value",(snap)=>{
+    let rawData = snap.val() || {};
+
+    let uniqueData = {};
+    let uniqueKeys = {};
+
+    Object.keys(rawData).forEach(key=>{
+      let item = rawData[key];
+
+      if(!item.waktu || item.waktu < 1000000000) return;
+
+      let uniqueId = `${item.bed}_${item.status}_${item.waktu}`;
+
+      if(!uniqueKeys[uniqueId]){
+        uniqueKeys[uniqueId] = true;
+        uniqueData[key] = item;
+      }
+    });
+
+    allData = uniqueData;
+
+    let today = getTodayDate();
+    filterTanggal.value = today;
+
+    tampilJudul(today);
+    filterData();
+  });
+}
+
+// TAMPILKAN DATA
+function tampil(data){
+  let html = "";
+
+  let arr = Object.keys(data).map(key=>data[key]);
+
+  arr = arr.filter(d=>d.waktu && d.waktu > 1000000000);
+
+  arr.sort((a,b)=>b.waktu - a.waktu);
+
+  let alarmHtml = "";
+
+  arr.forEach((d,index)=>{
+    html += `
+      <tr>
+        <td>${index+1}</td>
+        <td>${formatWaktu(d.waktu)}</td>
+        <td>${d.bed || "-"}</td>
+        <td>${d.nama || "-"}</td>
+        <td>${d.merek || "-"}</td>
+        <td>${d.seri || "-"}</td>
+        <td class="${getStatusClass(d.status)}">${d.status || "-"}</td>
+      </tr>
+    `;
+
+    if(index < 5){
+      alarmHtml += `
+        <tr>
+          <td>${d.bed || "-"}</td>
+          <td class="${getStatusClass(d.status)}">${d.status || "-"}</td>
+        </tr>
+      `;
+    }
+  });
+
+  dataTable.innerHTML = html;
+  alarmTable.innerHTML = alarmHtml;
+}
+
+// FILTER TANGGAL
+function filterData(){
+  let t = filterTanggal.value;
+  let hasil = {};
+
+  for(let k in allData){
+    let d = allData[k];
+
+    if(!d.waktu || d.waktu < 1000000000) continue;
+
+    let tgl = new Date(d.waktu * 1000).toLocaleDateString("en-CA",{
+      timeZone:"Asia/Jakarta"
+    });
+
+    if(tgl === t){
+      hasil[k] = d;
+    }
+  }
+
+  tampil(hasil);
+  tampilJudul(t);
+}
+
+// RESET HARI INI
+function resetFilter(){
+  let today = getTodayDate();
+  filterTanggal.value = today;
+  filterData();
+}
+
+// SEARCH
+function searchData(){
+  let input = searchInput.value.toLowerCase();
+  let tr = dataTable.getElementsByTagName("tr");
+
+  for(let i=0;i<tr.length;i++){
+    let text = tr[i].innerText.toLowerCase();
+    tr[i].style.display = text.includes(input) ? "" : "none";
+  }
+}
+
+// HAPUS DATA
+function hapusData(){
+  if(confirm("Yakin ingin menghapus semua data alarm?")){
+    db.ref("history").remove()
+    .then(()=>{
+      dataTable.innerHTML = "";
+      alarmTable.innerHTML = "";
+      allData = {};
+      lastLogTime = {};
+      alert("Semua data berhasil dihapus");
+    })
+    .catch(error=>{
+      alert("Error: " + error.message);
+    });
+  }
+}
+
+// JUDUL TANGGAL
+function tampilJudul(t){
+  let teks = new Date(t).toLocaleDateString("id-ID",{
+    day:"numeric",
+    month:"long",
+    year:"numeric"
+  });
+
+  judulTanggal.innerText = "📜 Data Alarm: " + teks;
+}
+
+// EXPORT EXCEL
+function exportExcel(){
+  let arr = [];
+
+  let rows = dataTable.querySelectorAll("tr");
+
+  rows.forEach(row=>{
+    let col = row.querySelectorAll("td");
+
+    if(col.length > 0 && row.style.display !== "none"){
+      arr.push({
+        No:col[0].innerText,
+        Waktu:col[1].innerText,
+        Ruangan:col[2].innerText,
+        Nama:col[3].innerText,
+        Merek:col[4].innerText,
+        Seri:col[5].innerText,
+        Status:col[6].innerText
+      });
+    }
+  });
+
+  let wb = XLSX.utils.book_new();
+  let ws = XLSX.utils.json_to_sheet(arr);
+
+  XLSX.utils.book_append_sheet(wb,ws,"Data Alarm");
+  XLSX.writeFile(wb,"Alarm_" + getTodayDate() + ".xlsx");
+}
+
+// SIMPAN DATA ALAT
+function simpan(){
+  if(!nama.value || !merek.value || !seri.value){
+    alert("Mohon lengkapi semua data!");
+    return;
+  }
+
+  let waktuSekarang = Math.floor(Date.now() / 1000);
+
+  db.ref("monitoring/" + bed.value).set({
+    nama:nama.value,
+    merek:merek.value,
+    seri:seri.value,
+    status:"NORMAL",
+    waktu:waktuSekarang
+  });
+
+  db.ref("device/bed").set(bed.value);
+
+  alert("Data alat berhasil disimpan");
+
+  nama.value = "";
+  merek.value = "";
+  seri.value = "";
+}
+
+// CHART
+const ctx = document.getElementById("alarmChart");
+
+new Chart(ctx,{
+  type:"line",
+  data:{
+    labels:["00","04","08","12","16","20"],
+    datasets:[
+      {
+        label:"Alarm",
+        data:[1,2,3,2,4,5],
+        borderColor:"red"
+      },
+      {
+        label:"Warning",
+        data:[1,1,2,2,1,3],
+        borderColor:"orange"
+      },
+      {
+        label:"Normal",
+        data:[5,5,6,7,8,9],
+        borderColor:"green"
+      }
+    ]
+  }
+});
+</script>
+
+</body>
+</html>
